@@ -63,7 +63,6 @@ function typeRequete(requete: String[], ws: WebSocket){
         break;
         default:
             //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
-            ws.
     }
 }
 
@@ -77,8 +76,12 @@ function splitRequete(msg: string): String[]{
 //"MESSAGE":
     //required: destination, message-id, subscription
 
+    function envoyerMessage(){
+
+    }
 //"RECEIPT":
     //required: receipt-is
+
 
     //fonction qui permet l'envoie à un client une frame ERROR
 function envoyerErreur(msgHeader: String, msgBody: String){
