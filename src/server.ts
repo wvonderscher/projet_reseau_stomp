@@ -1,3 +1,6 @@
+//node ./dist/server/server.js lancer le serveur
+// ./node_modules/.bin/tsc compile
+
 import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
@@ -29,7 +32,7 @@ wss.on('connection', (ws: WebSocket) => {
     });
 
     //send immediatly a feedback to the incoming connection    
-    ws.send('connecté');
+    ws.send('You are connected');
 });
 
 //start our server
