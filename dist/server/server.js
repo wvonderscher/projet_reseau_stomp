@@ -1,21 +1,25 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 //node ./dist/server/server.js lancer le serveur
 // ./node_modules/.bin/tsc compile
-Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const app = express();
-const connectionRegex = /^CONNECT/;
 const host = "ws://localhost:8999/";
-var lclients = {};
-//créer liste des subscribe
+var lclients = new Map();
+//création des différentes map qui vont accueillir les clients et l'id de leur subscribe.
+var topicSport = new Map();
+var topicJeux = new Map();
+var topicGeneral = new Map();
+//la liste des clients de chaque fil de discussion (s'ils se sont subscribe)
 //initialize a simple http server
 const server = http.createServer(app);
 //initialize the WebSocket server instance
 const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
     ws.id = idUnique();
+    //ABONNEMENT????
     //connection is up, let's add a simple simple event
     ws.on('message', (message) => {
         //log the received message and send it back to the client
@@ -27,8 +31,8 @@ wss.on('connection', (ws) => {
     ws.send('You are connected');
     //quand l'utilisateur ferme sa connexion (ne fonctionne pas)
     ws.on('close', event => {
-        if (inclusClient(lclients, ws)) {
-            delete lclients[ws.id];
+        if (lclients.has(ws.id)) {
+            lclients.delete(ws.id);
         }
     });
 });
@@ -41,7 +45,7 @@ function typeRequete(requete, ws) {
     switch (requete[0]) {
         case "CONNECT":
             //required: accept-version ,host
-            if (!inclusClient(lclients, ws)) {
+            if (!lclients.has(ws.id)) {
                 connecting(requete, ws);
             }
             else {
@@ -53,17 +57,27 @@ function typeRequete(requete, ws) {
             break;
         case "SUBSCRIBE":
             //required: destination, id
+            if (lclients.has(ws.id)) {
+                abonnement(requete, ws);
+            }
+            //verifier 
             break;
         case "UNSUBSCRIBE":
             //required: id
+            if (lclients.has(ws.id)) {
+                desabonner(requete, ws);
+            }
             break;
         case "DISCONNECT":
             //required:
-            seDeconnecter(requete, ws);
+            if (lclients.has(ws.id)) {
+                seDeconnecter(requete, ws);
+            }
             break;
         default:
-            console.log(lclients);
-            console.log("=============================================================================");
+            console.log(topicSport);
+            console.log(topicGeneral);
+            console.log(topicJeux);
             ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
         //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
     }
@@ -96,7 +110,7 @@ function connecting(requete, ws) {
         if (arg2[0] === "host" && (arg2[1] === "localhost")) {
             //connexion bonne
             // clientConnected.push(ws);
-            lclients[ws.id] = ws;
+            lclients.set(ws.id, ws);
             ws.send("CONNECTED\nversion:" + arg1[1] + "\n^@");
         }
         else {
@@ -113,28 +127,72 @@ function seDeconnecter(requete, ws) {
     let arg1 = requete[1].split(':');
     if (arg1[0] === 'receipt' && arg1[1] !== "") {
         //revoir comment supprimer 
-        delete lclients[ws.id];
+        lclients.delete(ws.id);
         ws.send("RECEIPT\nreceipt-id:" + arg1[1] + "\n^@");
     }
     else {
         ws.send(envoyerErreur("la Frame DISCONNECT est mal formée", "il manque le header receipt qui est necessaire", requete));
     }
 }
+function abonnement(requete, ws) {
+    //verification si requete bien formee
+    //On vérifie si l'id d'abonnement n'existe pas deja --> si existe erreur
+    //on ajoute le client dans la liste de destination 
+    // topic/sport
+    let arg1 = requete[1].split(':');
+    let arg2 = requete[2].split(':');
+    if (arg2[0] === "destination") {
+        if (arg1[0] === "id" && !idAbonnementExistant(ws, +arg1[1])) {
+            switch (arg2[1]) {
+                case "topic/sport":
+                    topicSport.set(ws.id, +arg1[1]);
+                    break;
+                case "topic/jeux":
+                    topicJeux.set(ws.id, +arg1[1]);
+                    break;
+                case "topic/general":
+                    topicGeneral.set(ws.id, +arg1[1]);
+                    break;
+                default:
+                    ws.send(envoyerErreur("la destination est inconnue", "Impossible de subscribe à la destination du header destination", requete));
+                    break;
+            }
+        }
+        else {
+            ws.send(envoyerErreur("le header id est mal formé", "le header id est nécessaire, il faut aussi que l id soit unique", requete));
+        }
+    }
+    else {
+        ws.send(envoyerErreur("le header destination est mal formé", "le header destination est necessaire.", requete));
+    }
+}
+function desabonner(requete, ws) {
+    let arg1 = requete[1].split(':');
+    if (arg1[0] === "id") {
+        if (topicGeneral.has(ws.id) && topicGeneral.get(ws.id) === +arg1[1]) {
+            topicGeneral.delete(ws.id);
+        }
+        if (topicJeux.has(ws.id) && topicJeux.get(ws.id) === +arg1[1]) {
+            topicJeux.delete(ws.id);
+        }
+        if (topicSport.has(ws.id) && topicSport.get(ws.id) === +arg1[1]) {
+            topicSport.delete(ws.id);
+        }
+    }
+    else {
+    }
+}
+function idAbonnementExistant(ws, idAbo) {
+    if ((topicGeneral.has(ws.id) && topicGeneral.get(ws.id) === idAbo) || (topicJeux.has(ws.id) && topicJeux.get(ws.id) === idAbo) || (topicSport.has(ws.id) && topicSport.get(ws.id) === idAbo)) {
+        return true;
+    }
+    return false;
+}
+//fonction qui permet la création d'un identifiant unique pour un client qui se connecte au serveur
 function idUnique() {
     function s4() {
         return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     }
     return s4() + s4() + '-' + s4();
-}
-function inclusClient(l, ws) {
-    if (l != null || l != undefined) {
-        let clefs = Object.keys(l);
-        clefs.forEach((clef, element) => {
-            if (l[clef].id === ws.id) {
-                return true;
-            }
-        });
-    }
-    return false;
 }
 //# sourceMappingURL=server.js.map

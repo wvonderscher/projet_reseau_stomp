@@ -9,3 +9,17 @@ host:localhost
 DISCONNECT
 receipt:77
 ^@
+
+
+
+SUBSCRIBE
+id:0
+destination:topic/jeux
+
+^@
+
+
+UNSUBSCRIBE
+id:0
+
+^@
