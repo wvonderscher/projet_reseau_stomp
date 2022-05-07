@@ -1,18 +1,20 @@
 //node ./dist/server/server.js lancer le serveur
 // ./node_modules/.bin/tsc compile
 
-
-
 import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
 
 const app = express();
-const connectionRegex = /^CONNECT/;
 const host = "ws://localhost:8999/";
+var lclients = new Map<String, ExtWebSocket>();
 
-var lclients: ListClients = {};
-//créer liste des subscribe
+//création des différentes map qui vont accueillir les clients et l'id de leur subscribe.
+var topicSport = new Map<String, number>();
+var topicJeux = new Map<String, number>();
+var topicGeneral = new Map<String, number>();
+//la liste des clients de chaque fil de discussion (s'ils se sont subscribe)
+
 
 //initialize a simple http server
 const server = http.createServer(app);
@@ -24,6 +26,7 @@ const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws: ExtWebSocket) => {
     ws.id = idUnique();
+    //ABONNEMENT????
     //connection is up, let's add a simple simple event
     ws.on('message', (message: string) => {
         //log the received message and send it back to the client
@@ -41,15 +44,11 @@ wss.on('connection', (ws: ExtWebSocket) => {
 
     
     //quand l'utilisateur ferme sa connexion (ne fonctionne pas)
-//     ws.on('close', event =>{
-//         let i =0;
-//             clientConnected.forEach(element => {
-//                 if(element === ws){
-//                     delete clientConnected[i];
-//                 }
-//                 i++;
-//             });
-//     });
+    ws.on('close', event =>{
+        if(lclients.has(ws.id)){
+            lclients.delete(ws.id);
+        }
+    });
  });
 
 
@@ -65,29 +64,39 @@ function typeRequete(requete: String[], ws: ExtWebSocket){
     switch(requete[0]){
         case "CONNECT":
             //required: accept-version ,host
-            if(!inclusClient(lclients, ws)){
+            if(!lclients.has(ws.id)){
                 connecting(requete,ws);
             }else{
                 ws.send(envoyerErreur("deja connecté","Vous etes deja connecte au serveur",requete));
             }
-            
-            console.log(lclients);
         break;
         case "SEND":
             //required: destination
         break;
         case "SUBSCRIBE":
             //required: destination, id
+            if(lclients.has(ws.id)){
+
+            }
+            //verifier 
         break;
         case "UNSUBSCRIBE":
             //required: id
+            if(lclients.has(ws.id)){
+
+            }
         break;
         case "DISCONNECT":
             //required:
-            seDeconnecter(requete,ws);
+            if(lclients.has(ws.id)){
+                seDeconnecter(requete,ws);
+            }
+            
         break;
         default:
             console.log(lclients);
+            console.log("=============================================================================");
+            
             ws.send(envoyerErreur("Frame non reconnue","Le serveur n a pas reconnue la Frame envoyée",requete));
             //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
     }
@@ -103,6 +112,8 @@ function splitRequete(msg: string): String[]{
 //"MESSAGE":
     //required: destination, message-id, subscription
 
+
+
     function envoyerMessage(){
 
     }
@@ -112,11 +123,10 @@ function splitRequete(msg: string): String[]{
 
     //fonction qui permet l'envoie à un client une frame ERROR
 function envoyerErreur(msgHeader: String, msgBody: String, requete: String[]){
-    let requeteComplete: String = "";
-    requete.forEach(element => {requete.concat(element+"\n")});
-    console.log("ERROR\ncontent-type:text/plain\ncontent-length:"+(requeteComplete.length+msgBody.length)+"\nmessage:"+msgHeader+"\n\nThe message:\n-----"+requeteComplete+"\n-----\n"+msgBody+"\n^@");
+    let requeteComplete = requete.join("\n");
+   // console.log("ERROR\ncontent-type:text/plain\ncontent-length:"+(requeteComplete.length+msgBody.length)+"\nmessage:"+msgHeader+"\n\nThe message:\n-----"+requeteComplete+"\n-----\n"+msgBody+"\n^@");
     
-    return "ERROR\ncontent-type:text/plain\ncontent-length:"+(requeteComplete.length+msgBody.length)+"\nmessage:"+msgHeader+"\n\nThe message:\n-----"+requeteComplete+"\n-----\n"+msgBody+"\n^@";
+    return "ERROR\ncontent-type:text/plain\ncontent-length:"+(requeteComplete.length+msgBody.length)+"\nmessage:"+msgHeader+"\n\nThe message:\n-----\n"+requeteComplete+"\n-----\n"+msgBody+"\n^@";
 }
 
 //Fonction pour valider la connexion d'un client avec la frame CONNECT
@@ -130,7 +140,7 @@ function connecting(requete: String[], ws:ExtWebSocket){
         if(arg2[0] === "host" && (arg2[1] === "localhost")){
             //connexion bonne
                // clientConnected.push(ws);
-                lclients[ws.id] = ws;
+                lclients.set(ws.id, ws);
                 ws.send("CONNECTED\nversion:"+arg1[1]+"\n^@"); 
         }
         else{
@@ -147,13 +157,20 @@ function seDeconnecter(requete: String[], ws:ExtWebSocket){
     let arg1= requete[1].split(':');
     if(arg1[0]==='receipt' && arg1[1] !== ""){
         //revoir comment supprimer 
-                delete lclients[ws.id];
+                lclients.delete(ws.id);
                 ws.send("RECEIPT\nreceipt-id:"+arg1[1]+"\n^@");
     }
     else{
         ws.send(envoyerErreur("la Frame DISCONNECT est mal formée", "il manque le header receipt qui est necessaire", requete));
     }
 }
+
+
+function abonnement(){
+    
+}
+
+
 
 function idUnique () {
     function s4() {
@@ -162,21 +179,7 @@ function idUnique () {
     return s4() + s4() + '-' + s4();
 }
 
-function inclusClient(l: ListClients, ws:ExtWebSocket ){
-    if(l != null || l != undefined){
-        let clefs = Object.keys(l);
-        clefs.forEach((clef, element)=>{
-            if(l[clef].id === ws.id){
-                return true;
-            }
-        });
-    }
-    return false;
-}
-
 interface ExtWebSocket extends WebSocket {
-    id: string; // your custom property
+    id: string;
+    abonnements: Map<number, string>;
   }
-interface ListClients {
-    [key: string]: ExtWebSocket;
-}

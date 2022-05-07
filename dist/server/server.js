@@ -26,15 +26,11 @@ wss.on('connection', (ws) => {
     //send immediatly a feedback to the incoming connection    
     ws.send('You are connected');
     //quand l'utilisateur ferme sa connexion (ne fonctionne pas)
-    //     ws.on('close', event =>{
-    //         let i =0;
-    //             clientConnected.forEach(element => {
-    //                 if(element === ws){
-    //                     delete clientConnected[i];
-    //                 }
-    //                 i++;
-    //             });
-    //     });
+    ws.on('close', event => {
+        if (inclusClient(lclients, ws)) {
+            delete lclients[ws.id];
+        }
+    });
 });
 //start our server
 server.listen(process.env.PORT || 8999, () => {
@@ -51,7 +47,6 @@ function typeRequete(requete, ws) {
             else {
                 ws.send(envoyerErreur("deja connecté", "Vous etes deja connecte au serveur", requete));
             }
-            console.log(lclients);
             break;
         case "SEND":
             //required: destination
@@ -68,6 +63,7 @@ function typeRequete(requete, ws) {
             break;
         default:
             console.log(lclients);
+            console.log("=============================================================================");
             ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
         //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
     }
@@ -85,10 +81,9 @@ function envoyerMessage() {
 //required: receipt-is
 //fonction qui permet l'envoie à un client une frame ERROR
 function envoyerErreur(msgHeader, msgBody, requete) {
-    let requeteComplete = "";
-    requete.forEach(element => { requete.concat(element + "\n"); });
-    console.log("ERROR\ncontent-type:text/plain\ncontent-length:" + (requeteComplete.length + msgBody.length) + "\nmessage:" + msgHeader + "\n\nThe message:\n-----" + requeteComplete + "\n-----\n" + msgBody + "\n^@");
-    return "ERROR\ncontent-type:text/plain\ncontent-length:" + (requeteComplete.length + msgBody.length) + "\nmessage:" + msgHeader + "\n\nThe message:\n-----" + requeteComplete + "\n-----\n" + msgBody + "\n^@";
+    let requeteComplete = requete.join("\n");
+    // console.log("ERROR\ncontent-type:text/plain\ncontent-length:"+(requeteComplete.length+msgBody.length)+"\nmessage:"+msgHeader+"\n\nThe message:\n-----"+requeteComplete+"\n-----\n"+msgBody+"\n^@");
+    return "ERROR\ncontent-type:text/plain\ncontent-length:" + (requeteComplete.length + msgBody.length) + "\nmessage:" + msgHeader + "\n\nThe message:\n-----\n" + requeteComplete + "\n-----\n" + msgBody + "\n^@";
 }
 //Fonction pour valider la connexion d'un client avec la frame CONNECT
 function connecting(requete, ws) {
