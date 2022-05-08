@@ -12,8 +12,8 @@ var lclients = new Map<String, ExtWebSocket>();
 var topicSport = new Map<String, number>();
 var topicJeux = new Map<String, number>();
 var topicGeneral = new Map<String, number>();
-//la liste des clients de chaque fil de discussion (s'ils se sont subscribe)
 
+var messageID: number = 0;
 //initialize a simple http server
 const server = http.createServer(app);
 
@@ -22,22 +22,10 @@ const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws: ExtWebSocket) => {
     ws.id = idUnique();
-    //ABONNEMENT????
-    //connection is up, let's add a simple simple event
     ws.on('message', (message: string) => {
-        //log the received message and send it back to the client
-        // console.log('received: %s', message);
-
-
         //On regarde la requete envoyé par le client
         typeRequete(splitRequete(message), ws);
-
     });
-
-    //send immediatly a feedback to the incoming connection    
-    ws.send('You are connected');
-
-
     //quand l'utilisateur ferme sa connexion (ne fonctionne pas)
     ws.on('close', event => {
         if (lclients.has(ws.id)) {
@@ -58,13 +46,16 @@ function typeRequete(requete: String[], ws: ExtWebSocket) {
         case "CONNECT":
             //required: accept-version ,host
             if (!lclients.has(ws.id)) {
-                connecting(requete, ws);
+                seConnecter(requete, ws);
             } else {
                 ws.send(envoyerErreur("deja connecté", "Vous etes deja connecte au serveur", requete));
             }
             break;
         case "SEND":
             //required: destination
+            if (lclients.has(ws.id)) {
+                messageClient(requete, ws);
+            }
             break;
         case "SUBSCRIBE":
             //required: destination, id
@@ -84,12 +75,8 @@ function typeRequete(requete: String[], ws: ExtWebSocket) {
             if (lclients.has(ws.id)) {
                 seDeconnecter(requete, ws);
             }
-
             break;
         default:
-            console.log(topicSport);
-            console.log(topicGeneral);
-            console.log(topicJeux);
             ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
         //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
     }
@@ -100,13 +87,7 @@ function splitRequete(msg: string): String[] {
     return String(msg).split(/\r?\n/);
 }
 
-//CE QUE LE SERVEUR RECOIT
-//"MESSAGE":
-//required: destination, message-id, subscription
 
-function envoyerMessage() {
-
-}
 //"RECEIPT":
 //required: receipt-is
 
@@ -120,7 +101,7 @@ function envoyerErreur(msgHeader: String, msgBody: String, requete: String[]) {
 }
 
 //Fonction pour valider la connexion d'un client avec la frame CONNECT
-function connecting(requete: String[], ws: ExtWebSocket) {
+function seConnecter(requete: String[], ws: ExtWebSocket) {
     //verification des headers
     //si un header mal formé : return ERROR
     //si tout bon : on ajoute le client dans la liste des clients connectes
@@ -146,9 +127,18 @@ function seDeconnecter(requete: String[], ws: ExtWebSocket) {
     //si requete est bonne, on supprimer le client de la liste des clients connectes
     let arg1 = requete[1].split(':');
     if (arg1[0] === 'receipt' && arg1[1] !== "") {
-        //revoir comment supprimer 
         lclients.delete(ws.id);
+        if (topicGeneral.has(ws.id)) {
+            topicGeneral.delete(ws.id);
+        }
+        if (topicJeux.has(ws.id)) {
+            topicJeux.delete(ws.id);
+        }
+        if (topicSport.has(ws.id)) {
+            topicSport.delete(ws.id);
+        }
         ws.send("RECEIPT\nreceipt-id:" + arg1[1] + "\n^@");
+        ws.CLOSED;
     }
     else {
         ws.send(envoyerErreur("la Frame DISCONNECT est mal formée", "il manque le header receipt qui est necessaire", requete));
@@ -210,7 +200,47 @@ function idAbonnementExistant(ws: ExtWebSocket, idAbo: number): boolean {
     return false;
 }
 
+//fonction qui est appelé lorsqu'un client envoie une frame SEND au serveur
+function messageClient(requete: String[], ws: ExtWebSocket) {
+    let arg1 = requete[1].split(':');
+    if (arg1[0] === "destination") {
+        let i = requete.findIndex((element) => element === "");
+        let body: String = requete[i + 1];
+        switch (arg1[1]) {
+            case "topic/sport":
+                for (let clientID of topicSport.keys()) {
+                    lclients.get(clientID)?.send(envoyerMessage(ws, arg1[1], body));
+                }
+                messageID++;
+                break;
+            case "topic/jeux":
+                for (let clientID of topicJeux.keys()) {
+                    lclients.get(clientID)?.send(envoyerMessage(ws, arg1[1], body));
+                }
+                messageID++;
+                break;
+            case "topic/general":
+                for (let clientID of topicGeneral.keys()) {
+                    lclients.get(clientID)?.send(envoyerMessage(ws, arg1[1], body));
+                }
+                messageID++;
+                break;
+            default:
+                ws.send(envoyerErreur("la destination est inconnue", "Impossible d envoyer le message a la destination car inconnue", requete));
+                break;
+        }
+    } else {
+        ws.send(envoyerErreur("le header destination est mal formé", "le header destination est obligatoire et doit avoir en valeur un topic existant", requete));
+    }
 
+}
+
+//"MESSAGE":
+//required: destination, message-id, subscription
+
+function envoyerMessage(ws: ExtWebSocket, dest: string, body: String) {
+    return "MESSAGE\nsubscription:0\nmessage-id:" + messageID + "\ndestination:" + dest + "\ncontent-type:text/plain\n\n" + body + "\n^@";
+}
 
 
 //fonction qui permet la création d'un identifiant unique pour un client qui se connecte au serveur

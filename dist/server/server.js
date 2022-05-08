@@ -12,23 +12,17 @@ var lclients = new Map();
 var topicSport = new Map();
 var topicJeux = new Map();
 var topicGeneral = new Map();
-//la liste des clients de chaque fil de discussion (s'ils se sont subscribe)
+var messageID = 0;
 //initialize a simple http server
 const server = http.createServer(app);
 //initialize the WebSocket server instance
 const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
     ws.id = idUnique();
-    //ABONNEMENT????
-    //connection is up, let's add a simple simple event
     ws.on('message', (message) => {
-        //log the received message and send it back to the client
-        // console.log('received: %s', message);
         //On regarde la requete envoyé par le client
         typeRequete(splitRequete(message), ws);
     });
-    //send immediatly a feedback to the incoming connection    
-    ws.send('You are connected');
     //quand l'utilisateur ferme sa connexion (ne fonctionne pas)
     ws.on('close', event => {
         if (lclients.has(ws.id)) {
@@ -46,7 +40,7 @@ function typeRequete(requete, ws) {
         case "CONNECT":
             //required: accept-version ,host
             if (!lclients.has(ws.id)) {
-                connecting(requete, ws);
+                seConnecter(requete, ws);
             }
             else {
                 ws.send(envoyerErreur("deja connecté", "Vous etes deja connecte au serveur", requete));
@@ -54,6 +48,9 @@ function typeRequete(requete, ws) {
             break;
         case "SEND":
             //required: destination
+            if (lclients.has(ws.id)) {
+                messageClient(requete, ws);
+            }
             break;
         case "SUBSCRIBE":
             //required: destination, id
@@ -75,9 +72,6 @@ function typeRequete(requete, ws) {
             }
             break;
         default:
-            console.log(topicSport);
-            console.log(topicGeneral);
-            console.log(topicJeux);
             ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
         //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
     }
@@ -85,11 +79,6 @@ function typeRequete(requete, ws) {
 //fonction qui permet de split une requete dans le but de traiter le différentes parties.
 function splitRequete(msg) {
     return String(msg).split(/\r?\n/);
-}
-//CE QUE LE SERVEUR RECOIT
-//"MESSAGE":
-//required: destination, message-id, subscription
-function envoyerMessage() {
 }
 //"RECEIPT":
 //required: receipt-is
@@ -100,7 +89,7 @@ function envoyerErreur(msgHeader, msgBody, requete) {
     return "ERROR\ncontent-type:text/plain\ncontent-length:" + (requeteComplete.length + msgBody.length) + "\nmessage:" + msgHeader + "\n\nThe message:\n-----\n" + requeteComplete + "\n-----\n" + msgBody + "\n^@";
 }
 //Fonction pour valider la connexion d'un client avec la frame CONNECT
-function connecting(requete, ws) {
+function seConnecter(requete, ws) {
     //verification des headers
     //si un header mal formé : return ERROR
     //si tout bon : on ajoute le client dans la liste des clients connectes
@@ -126,9 +115,18 @@ function seDeconnecter(requete, ws) {
     //si requete est bonne, on supprimer le client de la liste des clients connectes
     let arg1 = requete[1].split(':');
     if (arg1[0] === 'receipt' && arg1[1] !== "") {
-        //revoir comment supprimer 
         lclients.delete(ws.id);
+        if (topicGeneral.has(ws.id)) {
+            topicGeneral.delete(ws.id);
+        }
+        if (topicJeux.has(ws.id)) {
+            topicJeux.delete(ws.id);
+        }
+        if (topicSport.has(ws.id)) {
+            topicSport.delete(ws.id);
+        }
         ws.send("RECEIPT\nreceipt-id:" + arg1[1] + "\n^@");
+        ws.CLOSED;
     }
     else {
         ws.send(envoyerErreur("la Frame DISCONNECT est mal formée", "il manque le header receipt qui est necessaire", requete));
@@ -180,6 +178,7 @@ function desabonner(requete, ws) {
         }
     }
     else {
+        ws.send(envoyerErreur("le header id est mal formé", "le header id est nécessaire, il faut que l id soit un subscribe existant", requete));
     }
 }
 function idAbonnementExistant(ws, idAbo) {
@@ -187,6 +186,46 @@ function idAbonnementExistant(ws, idAbo) {
         return true;
     }
     return false;
+}
+//fonction qui est appelé lorsqu'un client envoie une frame SEND au serveur
+function messageClient(requete, ws) {
+    var _a, _b, _c;
+    let arg1 = requete[1].split(':');
+    if (arg1[0] === "destination") {
+        let i = requete.findIndex((element) => element === "");
+        let body = requete[i + 1];
+        switch (arg1[1]) {
+            case "topic/sport":
+                for (let clientID of topicSport.keys()) {
+                    (_a = lclients.get(clientID)) === null || _a === void 0 ? void 0 : _a.send(envoyerMessage(ws, arg1[1], body));
+                }
+                messageID++;
+                break;
+            case "topic/jeux":
+                for (let clientID of topicJeux.keys()) {
+                    (_b = lclients.get(clientID)) === null || _b === void 0 ? void 0 : _b.send(envoyerMessage(ws, arg1[1], body));
+                }
+                messageID++;
+                break;
+            case "topic/general":
+                for (let clientID of topicGeneral.keys()) {
+                    (_c = lclients.get(clientID)) === null || _c === void 0 ? void 0 : _c.send(envoyerMessage(ws, arg1[1], body));
+                }
+                messageID++;
+                break;
+            default:
+                ws.send(envoyerErreur("la destination est inconnue", "Impossible d envoyer le message a la destination car inconnue", requete));
+                break;
+        }
+    }
+    else {
+        ws.send(envoyerErreur("le header destination est mal formé", "le header destination est obligatoire et doit avoir en valeur un topic existant", requete));
+    }
+}
+//"MESSAGE":
+//required: destination, message-id, subscription
+function envoyerMessage(ws, dest, body) {
+    return "MESSAGE\nsubscription:0\nmessage-id:" + messageID + "\ndestination:" + dest + "\ncontent-type:text/plain\n\n" + body + "\n^@";
 }
 //fonction qui permet la création d'un identifiant unique pour un client qui se connecte au serveur
 function idUnique() {

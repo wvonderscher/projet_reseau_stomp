@@ -8,6 +8,7 @@ host:localhost
 
 DISCONNECT
 receipt:77
+
 ^@
 
 
@@ -22,4 +23,13 @@ destination:topic/jeux
 UNSUBSCRIBE
 id:0
 
+^@
+
+
+
+SEND
+destination:topic/jeux
+content-type:text/plain
+
+hello queue a
 ^@
