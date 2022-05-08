@@ -6,6 +6,7 @@ import * as WebSocket from 'ws';
 
 const app = express();
 const host = "ws://localhost:8999/";
+//liste des clients connectés au serveur
 var lclients = new Map<String, ExtWebSocket>();
 
 //création des différentes map qui vont accueillir les clients et l'id de leur subscribe.
@@ -23,7 +24,7 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws: ExtWebSocket) => {
     ws.id = idUnique();
     ws.on('message', (message: string) => {
-        //On regarde la requete envoyé par le client
+        //On regarde la requete envoyé par le client pour la traiter
         typeRequete(splitRequete(message), ws);
     });
     //quand l'utilisateur ferme sa connexion (ne fonctionne pas)
@@ -34,21 +35,19 @@ wss.on('connection', (ws: ExtWebSocket) => {
     });
 });
 
-//start our server
 server.listen(process.env.PORT || 8999, () => {
-    //console.log(`Server started on port ${server.address().port} :)`);
+    console.log("serveur demarré");
 });
 
 //fonction qui va vérifier si la frame de la requete existe et traiter cette dernière.
 function typeRequete(requete: String[], ws: ExtWebSocket) {
-
     switch (requete[0]) {
         case "CONNECT":
             //required: accept-version ,host
             if (!lclients.has(ws.id)) {
                 seConnecter(requete, ws);
             } else {
-                ws.send(envoyerErreur("deja connecté", "Vous etes deja connecte au serveur", requete));
+                ws.send(envoyerErreur("deja connecté", "Vous êtes deja connecté au serveur", requete));
             }
             break;
         case "SEND":
@@ -82,7 +81,7 @@ function typeRequete(requete: String[], ws: ExtWebSocket) {
     }
 }
 
-//fonction qui permet de split une requete dans le but de traiter le différentes parties.
+//fonction qui permet de split une requete dans le but de traiter les différentes parties.
 function splitRequete(msg: string): String[] {
     return String(msg).split(/\r?\n/);
 }
@@ -105,21 +104,26 @@ function seConnecter(requete: String[], ws: ExtWebSocket) {
     //verification des headers
     //si un header mal formé : return ERROR
     //si tout bon : on ajoute le client dans la liste des clients connectes
-    let arg1 = requete[1].split(':');
-    let arg2 = requete[2].split(':');
-    if ((arg1[0] === "accept-version") && (arg1[1] === "1.2" || arg1[1] === "1.1" || arg1[1] === "1.0")) {
-        if (arg2[0] === "host" && (arg2[1] === "localhost")) {
-            //connexion bonne
-            // clientConnected.push(ws);
-            lclients.set(ws.id, ws);
-            ws.send("CONNECTED\nversion:" + arg1[1] + "\n^@");
-        }
-        else {
-            ws.send(envoyerErreur("la frame CONNECT est mal formée", "il manque le header host qui est nécessaire", requete));
+    if (requete.find(element => element.startsWith("accept-version:")) !== undefined) {
+        let version = requete.find(element => element.startsWith("accept-version"))?.split(':')[1];
+        if (version === "1.2" || version === "1.1" || version === "1.0") {
+            if (requete.find(element => element.startsWith("host:")) !== undefined &&
+                requete.find(element => element.startsWith("host:"))?.split(':')[1] === "localhost") {
+                //connexion bonne
+                // clientConnected.push(ws);
+                lclients.set(ws.id, ws);
+                ws.send("CONNECTED\nversion:" + version + "\n^@");
+            }
+            else {
+                ws.send(envoyerErreur("la frame CONNECT est mal formée", "il manque le header host qui est nécessaire", requete));
+            }
+        } else {
+            ws.send(envoyerErreur("la frame CONNECT est mal formée", "La version n est pas la bonne", requete));
         }
     } else {
         ws.send(envoyerErreur("la frame CONNECT est mal formée", "Il manque le header accept-version qui est nécessaire", requete));
     }
+
 }
 
 //fonciton qui permet de deconnecter un client du serveur
@@ -140,9 +144,7 @@ function seDeconnecter(requete: String[], ws: ExtWebSocket) {
     } else {
         ws.send("a+ dans le bus");
     }
-
     ws.CLOSED;
-
 }
 
 function abonnement(requete: String[], ws: ExtWebSocket) {

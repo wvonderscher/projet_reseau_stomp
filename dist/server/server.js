@@ -7,6 +7,7 @@ const http = require("http");
 const WebSocket = require("ws");
 const app = express();
 const host = "ws://localhost:8999/";
+//liste des clients connectés au serveur
 var lclients = new Map();
 //création des différentes map qui vont accueillir les clients et l'id de leur subscribe.
 var topicSport = new Map();
@@ -20,7 +21,7 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
     ws.id = idUnique();
     ws.on('message', (message) => {
-        //On regarde la requete envoyé par le client
+        //On regarde la requete envoyé par le client pour la traiter
         typeRequete(splitRequete(message), ws);
     });
     //quand l'utilisateur ferme sa connexion (ne fonctionne pas)
@@ -30,9 +31,8 @@ wss.on('connection', (ws) => {
         }
     });
 });
-//start our server
 server.listen(process.env.PORT || 8999, () => {
-    //console.log(`Server started on port ${server.address().port} :)`);
+    console.log("serveur demarré");
 });
 //fonction qui va vérifier si la frame de la requete existe et traiter cette dernière.
 function typeRequete(requete, ws) {
@@ -43,7 +43,7 @@ function typeRequete(requete, ws) {
                 seConnecter(requete, ws);
             }
             else {
-                ws.send(envoyerErreur("deja connecté", "Vous etes deja connecte au serveur", requete));
+                ws.send(envoyerErreur("deja connecté", "Vous êtes deja connecté au serveur", requete));
             }
             break;
         case "SEND":
@@ -76,7 +76,7 @@ function typeRequete(requete, ws) {
         //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
     }
 }
-//fonction qui permet de split une requete dans le but de traiter le différentes parties.
+//fonction qui permet de split une requete dans le but de traiter les différentes parties.
 function splitRequete(msg) {
     return String(msg).split(/\r?\n/);
 }
@@ -90,20 +90,26 @@ function envoyerErreur(msgHeader, msgBody, requete) {
 }
 //Fonction pour valider la connexion d'un client avec la frame CONNECT
 function seConnecter(requete, ws) {
+    var _a, _b;
     //verification des headers
     //si un header mal formé : return ERROR
     //si tout bon : on ajoute le client dans la liste des clients connectes
-    let arg1 = requete[1].split(':');
-    let arg2 = requete[2].split(':');
-    if ((arg1[0] === "accept-version") && (arg1[1] === "1.2" || arg1[1] === "1.1" || arg1[1] === "1.0")) {
-        if (arg2[0] === "host" && (arg2[1] === "localhost")) {
-            //connexion bonne
-            // clientConnected.push(ws);
-            lclients.set(ws.id, ws);
-            ws.send("CONNECTED\nversion:" + arg1[1] + "\n^@");
+    if (requete.find(element => element.startsWith("accept-version:")) !== undefined) {
+        let version = (_a = requete.find(element => element.startsWith("accept-version"))) === null || _a === void 0 ? void 0 : _a.split(':')[1];
+        if (version === "1.2" || version === "1.1" || version === "1.0") {
+            if (requete.find(element => element.startsWith("host:")) !== undefined &&
+                ((_b = requete.find(element => element.startsWith("host:"))) === null || _b === void 0 ? void 0 : _b.split(':')[1]) === "localhost") {
+                //connexion bonne
+                // clientConnected.push(ws);
+                lclients.set(ws.id, ws);
+                ws.send("CONNECTED\nversion:" + version + "\n^@");
+            }
+            else {
+                ws.send(envoyerErreur("la frame CONNECT est mal formée", "il manque le header host qui est nécessaire", requete));
+            }
         }
         else {
-            ws.send(envoyerErreur("la frame CONNECT est mal formée", "il manque le header host qui est nécessaire", requete));
+            ws.send(envoyerErreur("la frame CONNECT est mal formée", "La version n est pas la bonne", requete));
         }
     }
     else {
