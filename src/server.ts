@@ -125,24 +125,24 @@ function seConnecter(requete: String[], ws: ExtWebSocket) {
 //fonciton qui permet de deconnecter un client du serveur
 function seDeconnecter(requete: String[], ws: ExtWebSocket) {
     //si requete est bonne, on supprimer le client de la liste des clients connectes
-    let arg1 = requete[1].split(':');
-    if (arg1[0] === 'receipt' && arg1[1] !== "") {
-        lclients.delete(ws.id);
-        if (topicGeneral.has(ws.id)) {
-            topicGeneral.delete(ws.id);
-        }
-        if (topicJeux.has(ws.id)) {
-            topicJeux.delete(ws.id);
-        }
-        if (topicSport.has(ws.id)) {
-            topicSport.delete(ws.id);
-        }
-        ws.send("RECEIPT\nreceipt-id:" + arg1[1] + "\n^@");
-        ws.CLOSED;
+    lclients.delete(ws.id);
+    if (topicGeneral.has(ws.id)) {
+        topicGeneral.delete(ws.id);
     }
-    else {
-        ws.send(envoyerErreur("la Frame DISCONNECT est mal formée", "il manque le header receipt qui est necessaire", requete));
+    if (topicJeux.has(ws.id)) {
+        topicJeux.delete(ws.id);
     }
+    if (topicSport.has(ws.id)) {
+        topicSport.delete(ws.id);
+    }
+    if (requete.find(element => element.startsWith("receipt:")) !== undefined) {
+        ws.send("RECEIPT\nreceipt-id:" + requete.find(element => element.startsWith("receipt:"))?.split(':')[1] + "\n^@");
+    } else {
+        ws.send("a+ dans le bus");
+    }
+
+    ws.CLOSED;
+
 }
 
 function abonnement(requete: String[], ws: ExtWebSocket) {
