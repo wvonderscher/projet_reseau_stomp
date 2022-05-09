@@ -49,42 +49,46 @@ server.listen(process.env.PORT || 8999, () => {
  * @param ws client expediteur
  */
 function typeRequete(requete: String[], ws: ExtWebSocket) {
-    switch (requete[0]) {
-        case "CONNECT":
-            //required: accept-version ,host
-            if (!lclients.has(ws.id)) {
-                seConnecter(requete, ws);
-            } else {
-                ws.send(envoyerErreur("deja connecté", "Vous êtes deja connecté au serveur", requete));
-            }
-            break;
-        case "SEND":
-            //required: destination
-            if (lclients.has(ws.id)) {
-                messageClient(requete, ws);
-            }
-            break;
-        case "SUBSCRIBE":
-            //required: destination, id
-            if (lclients.has(ws.id)) {
-                abonnement(requete, ws);
-            }
-            //verifier 
-            break;
-        case "UNSUBSCRIBE":
-            //required: id
-            if (lclients.has(ws.id)) {
-                desabonner(requete, ws);
-            }
-            break;
-        case "DISCONNECT":
-            //required:
-            if (lclients.has(ws.id)) {
-                seDeconnecter(requete, ws);
-            }
-            break;
-        default:
-            ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
+    if (requete[requete.length - 1].includes("^@")) {
+        switch (requete[0]) {
+            case "CONNECT":
+                //required: accept-version ,host
+                if (!lclients.has(ws.id)) {
+                    seConnecter(requete, ws);
+                } else {
+                    ws.send(envoyerErreur("deja connecté", "Vous êtes deja connecté au serveur", requete));
+                }
+                break;
+            case "SEND":
+                //required: destination
+                if (lclients.has(ws.id)) {
+                    messageClient(requete, ws);
+                }
+                break;
+            case "SUBSCRIBE":
+                //required: destination, id
+                if (lclients.has(ws.id)) {
+                    abonnement(requete, ws);
+                }
+                //verifier 
+                break;
+            case "UNSUBSCRIBE":
+                //required: id
+                if (lclients.has(ws.id)) {
+                    desabonner(requete, ws);
+                }
+                break;
+            case "DISCONNECT":
+                //required:
+                if (lclients.has(ws.id)) {
+                    seDeconnecter(requete, ws);
+                }
+                break;
+            default:
+                ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
+        }
+    } else {
+        ws.send(envoyerErreur("Requête mal formée", "il manque les caractères ^@ pour fermer la requête", requete));
     }
 }
 
