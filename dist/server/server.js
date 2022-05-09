@@ -72,7 +72,10 @@ function typeRequete(requete, ws) {
             }
             break;
         default:
-            ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
+            console.log(topicJeux);
+            console.log(topicGeneral);
+            console.log(topicSport);
+        //ws.send(envoyerErreur("Frame non reconnue", "Le serveur n a pas reconnue la Frame envoyée", requete));
         //si aucune des Frames est connue, on renvoie ERROR pour prévenir le client
     }
 }
@@ -90,19 +93,16 @@ function envoyerErreur(msgHeader, msgBody, requete) {
 }
 //Fonction pour valider la connexion d'un client avec la frame CONNECT
 function seConnecter(requete, ws) {
-    var _a, _b;
     //verification des headers
     //si un header mal formé : return ERROR
     //si tout bon : on ajoute le client dans la liste des clients connectes
-    if (requete.find(element => element.startsWith("accept-version:")) !== undefined) {
-        let version = (_a = requete.find(element => element.startsWith("accept-version"))) === null || _a === void 0 ? void 0 : _a.split(':')[1];
-        if (version === "1.2" || version === "1.1" || version === "1.0") {
-            if (requete.find(element => element.startsWith("host:")) !== undefined &&
-                ((_b = requete.find(element => element.startsWith("host:"))) === null || _b === void 0 ? void 0 : _b.split(':')[1]) === "localhost") {
-                //connexion bonne
-                // clientConnected.push(ws);
+    let arg1 = requete[1].split(':');
+    let arg2 = requete[2].split(':');
+    if (arg1[0] === 'accept-version') {
+        if (arg1[1] === "1.2" || arg1[1] === "1.1" || arg1[1] === "1.0") {
+            if (arg2[0] === "host" && arg2[1] === "localhost") {
                 lclients.set(ws.id, ws);
-                ws.send("CONNECTED\nversion:" + version + "\n^@");
+                ws.send("CONNECTED\nversion:" + arg2[1] + "\n^@");
             }
             else {
                 ws.send(envoyerErreur("la frame CONNECT est mal formée", "il manque le header host qui est nécessaire", requete));
@@ -196,32 +196,39 @@ function idAbonnementExistant(ws, idAbo) {
 //fonction qui est appelé lorsqu'un client envoie une frame SEND au serveur
 function messageClient(requete, ws) {
     var _a, _b, _c;
+    //pn regarde la destination
     let arg1 = requete[1].split(':');
     if (arg1[0] === "destination") {
         let i = requete.findIndex((element) => element === "");
-        let body = requete[i + 1];
-        switch (arg1[1]) {
-            case "topic/sport":
-                for (let clientID of topicSport.keys()) {
-                    (_a = lclients.get(clientID)) === null || _a === void 0 ? void 0 : _a.send(envoyerMessage(ws, arg1[1], body));
-                }
-                messageID++;
-                break;
-            case "topic/jeux":
-                for (let clientID of topicJeux.keys()) {
-                    (_b = lclients.get(clientID)) === null || _b === void 0 ? void 0 : _b.send(envoyerMessage(ws, arg1[1], body));
-                }
-                messageID++;
-                break;
-            case "topic/general":
-                for (let clientID of topicGeneral.keys()) {
-                    (_c = lclients.get(clientID)) === null || _c === void 0 ? void 0 : _c.send(envoyerMessage(ws, arg1[1], body));
-                }
-                messageID++;
-                break;
-            default:
-                ws.send(envoyerErreur("la destination est inconnue", "Impossible d envoyer le message a la destination car inconnue", requete));
-                break;
+        let body = requete.slice(i, requete.length).join(" ");
+        if (body.slice(-2) === "^@") {
+            body.slice(-2);
+            switch (arg1[1]) {
+                case "topic/sport":
+                    for (let clientID of topicSport.keys()) {
+                        (_a = lclients.get(clientID)) === null || _a === void 0 ? void 0 : _a.send(envoyerMessage(ws, arg1[1], body, topicSport.get(clientID)));
+                        messageID++;
+                    }
+                    break;
+                case "topic/jeux":
+                    for (let clientID of topicJeux.keys()) {
+                        (_b = lclients.get(clientID)) === null || _b === void 0 ? void 0 : _b.send(envoyerMessage(ws, arg1[1], body, topicJeux.get(clientID)));
+                        messageID++;
+                    }
+                    break;
+                case "topic/general":
+                    for (let clientID of topicGeneral.keys()) {
+                        (_c = lclients.get(clientID)) === null || _c === void 0 ? void 0 : _c.send(envoyerMessage(ws, arg1[1], body, topicGeneral.get(clientID)));
+                        messageID++;
+                    }
+                    break;
+                default:
+                    ws.send(envoyerErreur("la destination est inconnue", "Impossible d envoyer le message a la destination car inconnue", requete));
+                    break;
+            }
+        }
+        else {
+            ws.send(envoyerErreur("requete mal formée", "il manque ^@ a la fin", requete));
         }
     }
     else {
@@ -230,8 +237,13 @@ function messageClient(requete, ws) {
 }
 //"MESSAGE":
 //required: destination, message-id, subscription
-function envoyerMessage(ws, dest, body) {
-    return "MESSAGE\nsubscription:0\nmessage-id:" + messageID + "\ndestination:" + dest + "\ncontent-type:text/plain\n\n" + body + "\n^@";
+function envoyerMessage(ws, dest, body, abonnementId) {
+    if (abonnementId === undefined) {
+        return envoyerErreur("le header subscription est mal formé", "l'id n'existe pas", [""]);
+    }
+    else {
+        return "MESSAGE\nsubscription:" + abonnementId + "\nmessage-id:" + messageID + "\ndestination:" + dest + "\ncontent-type:text/plain\n\n" + body + "\n^@";
+    }
 }
 //fonction qui permet la création d'un identifiant unique pour un client qui se connecte au serveur
 function idUnique() {
