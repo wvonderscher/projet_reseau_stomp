@@ -212,7 +212,7 @@ function messageClient(requete: String[], ws: ExtWebSocket) {
         let i = requete.findIndex((element) => element === "");
         let body: String = requete.slice(i, requete.length).join(" ");
         if (body.slice(-2) === "^@") {
-            body.slice(-2);
+            body = body.substring(0, body.length - 2);
             switch (arg1[1]) {
                 case "topic/sport":
                     for (let clientID of topicSport.keys()) {
