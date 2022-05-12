@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="ec169d03-8cfd-4dd2-8e5f-e06a37d1bb3e" name="Changes" comment="" />
+    <list default="true" id="ec169d03-8cfd-4dd2-8e5f-e06a37d1bb3e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -9,6 +11,13 @@
   </component>
   <component name="ComposerSettings">
     <execution />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="HTML File" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -19,6 +28,7 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="DefaultHtmlFileTemplate" value="HTML File" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
@@ -36,6 +46,11 @@
       <option name="presentableId" value="Default" />
       <updated>1651746795992</updated>
       <workItem from="1651746801203" duration="302000" />
+      <workItem from="1651747793139" duration="10000" />
+      <workItem from="1652175740310" duration="1366000" />
+      <workItem from="1652258525161" duration="7000" />
+      <workItem from="1652341266156" duration="750000" />
+      <workItem from="1652349973567" duration="3074000" />
     </task>
     <servers />
   </component>

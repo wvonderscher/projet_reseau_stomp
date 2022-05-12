@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+    </head>
+    <body>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <div>
+            Connexion vers
+            <input type="text" id="url" value="ws://localhost:8999">
+            <button id="send">Se connecter</button>
+        </div>
+        <script>
+            $("#send").click(function(){
+                const socket = new WebSocket($("#url").val());
+                socket.onopen = function(event){
+                    socket.send("CONNECT\n" +
+                        "accept-version:1.2\n" +
+                        "host:localhost\n" +
+                        "\n" +
+                        "^@");
+                }
+                socket.onmessage = function(event){
+                    console.log(event.data);
+                }
+            })
+        </script>
+    </body>
+</html>
