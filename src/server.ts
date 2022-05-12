@@ -131,7 +131,7 @@ function seConnecter(requete: String[], ws: ExtWebSocket) {
         if (arg1[1] === "1.2" || arg1[1] === "1.1" || arg1[1] === "1.0") {
             if (arg2[0] === "host" && arg2[1] === "localhost") {
                 lclients.set(ws.id, ws);
-                ws.send("CONNECTED\nversion:" + arg2[1] + "\n^@");
+                ws.send("CONNECTED\nversion:" + arg1[1] + "\n^@");
             }
             else {
                 ws.send(envoyerErreur("la frame CONNECT est mal formée", "il manque le header host qui est nécessaire", requete));
