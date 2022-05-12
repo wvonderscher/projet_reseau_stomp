@@ -11,9 +11,28 @@
             <input type="text" id="url" value="ws://localhost:8999">
             <button id="send">Se connecter</button>
         </div>
+        <div>
+            <button id="disconnect">Déconnexion</button>
+        </div>
+        <div>
+            <input type="text" id="topic" value="topic/jeux">
+            <button id="subscribe">Souscrire</button>
+        </div>
+        <div>
+            <input type="text" id="message" placeholder="Veuillez saisir votre message ...">
+            <button id="envoyer">Envoyer le message</button>
+        </div>
+        <div>
+            <label>Réponse du serveur : </label>
+            <div id="reponseMessage"></div>
+        </div>
+        <div>
+            <p id="connexionReponse"></p>
+        </div>
         <script>
+            let socket = null;
             $("#send").click(function(){
-                const socket = new WebSocket($("#url").val());
+                socket = new WebSocket($("#url").val());
                 socket.onopen = function(event){
                     socket.send("CONNECT\n" +
                         "accept-version:1.2\n" +
@@ -22,9 +41,45 @@
                         "^@");
                 }
                 socket.onmessage = function(event){
+                    $("#connexionReponse").append(event.data);
                     console.log(event.data);
+                }
+            })
+
+            $("#disconnect").click(function(){
+                socket.send("DISCONNECT\n" +
+                    "receipt:77\n" +
+                    "\n" +
+                    "^@");
+                socket.onmessage = function(event){
+                    $("#connexionReponse").append(event.data);
+                    console.log(event.data);
+                }
+            })
+
+            $("#subscribe").click(function(){
+                socket.send("SUBSCRIBE\n" +
+                    "id:0\n" +
+                    "destination:" + $("#topic").val() +
+                    "\n" +
+                    "^@");
+                socket.onmessage = function(event){
+                    console.log(event.data);
+                }
+            })
+
+            $("#envoyer").click(function(){
+                socket.send("SEND\n" +
+                    "destination:topic/jeux\n" +
+                    "content-type:text/plain\n" +
+                    "\n" +
+                    $("#message").val() +
+                    "^@");
+                socket.onmessage = function(event){
+                    $("#reponseMessage").append(event.data);
                 }
             })
         </script>
     </body>
 </html>
+
