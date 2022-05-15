@@ -2,35 +2,57 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Title</title>
+        <title>Projet Réseau</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link rel="stylesheet" href="style.css">
     </head>
     <body>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <h1> Projet STOMP</h1>
+        <h6>CHELH - VONDERSCHER - ZANZI</h6>
         <div>
-            Connexion vers
+            Connexion vers :
             <input type="text" id="url" value="ws://localhost:8999">
-            <button id="send">Se connecter</button>
         </div>
         <div>
-            <button id="disconnect">Déconnexion</button>
+            <button class="btn btn-primary" id="send">Se connecter</button>
+            <button class="btn btn-danger" id="disconnect">Déconnexion</button>
         </div>
         <div>
-            <input type="text" id="topic" value="topic/jeux">
-            <button id="subscribe">Souscrire</button>
+            <p> </p>
+        </div>
+        Choisissez un topic :
+            <select class="form-select form-select-lg mb-3" name="topic" id="topic-select" >
+            <option value="topic/jeux">topic/jeux</option>
+            <option value="topic/general">topic/general</option>
+            <option value="topic/sport">topic/sport</option>
+        </select>
+        <div>
+            <button class="btn btn-primary" id="subscribe">Souscrire</button>
+            <button class="btn btn-danger" id="unsubscribe">Désabonner</button>
         </div>
         <div>
-            <input type="text" id="message" placeholder="Veuillez saisir votre message ...">
-            <button id="envoyer">Envoyer le message</button>
+            <p>  </p>
+        </div>
+        <div>
+            <p> Votre message :  </p>
+        </div>
+        <div>
+            <textarea id="message"  rows="2" cols="50" placeholder="Veuillez saisir votre message ..."  ></textarea>
+        </div>
+        <div>
+            <button class="btn btn-success" id="envoyer">Envoyer le message</button>
         </div>
         <div>
             <label>Réponse du serveur : </label>
-            <div id="reponseMessage"></div>
         </div>
+
         <div>
-            <p id="connexionReponse"></p>
+            <textarea id="responseServer"  rows="20" cols="50" readonly="readonly"></textarea>
         </div>
         <script>
             let socket = null;
+            var nb = 0
             $("#send").click(function(){
                 socket = new WebSocket($("#url").val());
                 socket.onopen = function(event){
@@ -41,7 +63,7 @@
                         "^@");
                 }
                 socket.onmessage = function(event){
-                    $("#connexionReponse").append(event.data);
+                    $("#responseServer").append(event.data + "\n");
                     console.log(event.data);
                 }
             })
@@ -52,15 +74,28 @@
                     "\n" +
                     "^@");
                 socket.onmessage = function(event){
-                    $("#connexionReponse").append(event.data);
+                    $("#responseServer").append(event.data);
                     console.log(event.data);
                 }
             })
-
             $("#subscribe").click(function(){
+                console.log(nb);
+
                 socket.send("SUBSCRIBE\n" +
-                    "id:0\n" +
-                    "destination:" + $("#topic").val() +
+                    "id:" + nb + "\n" +
+                    "destination:" + $("#topic-select").val() +
+                    "\n" +
+                    "^@");
+                socket.onmessage = function(event){
+                    console.log(event.data);
+                }
+                nb++;
+            })
+
+            $("#unsubscribe").click(function(){
+                nb--;
+                socket.send("UNSUBSCRIBE\n" +
+                    "id:" + nb + "\n" +
                     "\n" +
                     "^@");
                 socket.onmessage = function(event){
@@ -70,13 +105,16 @@
 
             $("#envoyer").click(function(){
                 socket.send("SEND\n" +
-                    "destination:topic/jeux\n" +
+                    "destination:" + $("#topic-select").val() +
+                    "\n" +
                     "content-type:text/plain\n" +
                     "\n" +
                     $("#message").val() +
                     "^@");
                 socket.onmessage = function(event){
-                    $("#reponseMessage").append(event.data);
+                    $("#responseServer").append("\n-----------------------\n");
+                    $("#responseServer").append(event.data);
+                    console.log(event.data);
                 }
             })
         </script>
