@@ -29,7 +29,22 @@ id:0
 
 SEND
 destination:topic/jeux
-content-type:text/plain
 
-hello queue a
+Salut salut les amis du topic jeux
+^@
+
+
+ERROR
+content-type:text/plain
+content-length:103
+message:le header id est mal formé
+
+The message:
+-----
+SUBSCRIBE
+id:0
+destination:topic-jeux
+^@
+-----
+le header id est nécessaire, il faut aussi que l id soit unique
 ^@

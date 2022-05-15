@@ -247,6 +247,7 @@ function messageClient(requete: String[], ws: ExtWebSocket) {
     //vérification des headers pour valider la bonne construction de la frame
     let arg1 = requete[1].split(':');
     if (arg1[0] === "destination") {
+        //on cherche quand commence le body pour récuperer le contenu du message.
         let i = requete.findIndex((element) => element === "");
         let body: String = requete.slice(i, requete.length).join(" ");
         if (body.slice(-2) === "^@") {
