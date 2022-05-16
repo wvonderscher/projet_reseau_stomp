@@ -52,7 +52,9 @@
         </div>
         <script>
             let socket = null;
-            var nb = 0
+            let idTopics = 0;
+            let map = new Map();
+
             $("#send").click(function(){
                 socket = new WebSocket($("#url").val());
                 socket.onopen = function(event){
@@ -64,7 +66,6 @@
                 }
                 socket.onmessage = function(event){
                     $("#responseServer").append(event.data + "\n");
-                    console.log(event.data);
                 }
             })
 
@@ -75,32 +76,23 @@
                     "^@");
                 socket.onmessage = function(event){
                     $("#responseServer").append(event.data);
-                    console.log(event.data);
                 }
             })
             $("#subscribe").click(function(){
-                console.log(nb);
-
                 socket.send("SUBSCRIBE\n" +
-                    "id:" + nb + "\n" +
+                    "id:" + idTopics + "\n" +
                     "destination:" + $("#topic-select").val() +
                     "\n" +
                     "^@");
-                socket.onmessage = function(event){
-                    console.log(event.data);
-                }
-                nb++;
+                map.set($("#topic-select").val(), idTopics);
+                idTopics++;
             })
 
             $("#unsubscribe").click(function(){
-                nb--;
                 socket.send("UNSUBSCRIBE\n" +
-                    "id:" + nb + "\n" +
+                    "id:" + map.get($("#topic-select").val()) + "\n" +
                     "\n" +
                     "^@");
-                socket.onmessage = function(event){
-                    console.log(event.data);
-                }
             })
 
             $("#envoyer").click(function(){
@@ -114,7 +106,6 @@
                 socket.onmessage = function(event){
                     $("#responseServer").append("\n-----------------------\n");
                     $("#responseServer").append(event.data);
-                    console.log(event.data);
                 }
             })
         </script>
