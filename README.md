@@ -10,7 +10,11 @@ info : dans le client.html, le topic choisi dans la liste est celui pour lequel 
 Dans le répertoire du projet, vous trouverez 2 scripts nommés "demarrer.bat" & "demarrer.sh", il vous suffit d'exécuter si vous êtes sous Linux/MacOS : "demarrer.sh" et si vous êtes sous windows : "demarrer.bat".
 Cela va démarrer le serveur Node.js et ouvrir un client sur navigateur. Pour faire du multiclient il suffit d'ouvrir d'autres clients (src/client.html)
 
+Si les script ne fonctionnent pas, alors il suffit de lancer la commande depuis la racine : "node ./dist/server/server.js" dans une invite de commande, ce qui va démarrer le serveur, pour un avoir un client, il suffit d'ouvrir dans le répertoire src, le fichier client.html
 
+## Rapport
+
+le rapport se trouve dans la racine du projet "rapport_projet_reseau.pdf".
 
 ## Créateurs
 
