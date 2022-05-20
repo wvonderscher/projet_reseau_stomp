@@ -1,5 +1,3 @@
-//node ./dist/server/server.js lancer le serveur
-// ./node_modules/.bin/tsc compile
 import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
@@ -13,7 +11,7 @@ var lclients = new Map<String, ExtWebSocket>();
 var topicSport = new Map<String, number>();
 var topicJeux = new Map<String, number>();
 var topicGeneral = new Map<String, number>();
-//messasge id unique pour les frame MESSAGE
+//message id unique pour les frame MESSAGE
 var messageID: number = 0;
 //http server
 const server = http.createServer(app);
@@ -26,6 +24,7 @@ wss.on('connection', (ws: ExtWebSocket) => {
     ws.id = idUnique();
     ws.on('message', (message: string) => {
         //On regarde la requete envoyé par le client pour la traiter
+        //
         typeRequete(splitRequete(message), ws);
     });
 
@@ -292,7 +291,6 @@ function messageClient(requete: String[], ws: ExtWebSocket) {
  * @param abonnementId id de l'abonnement du client inscrit au topic
  * @returns message à destination des clients sous la forme d'une frame MESSAGE
  */
-
 function envoyerMessage(ws: ExtWebSocket, dest: string, body: String, abonnementId: number | undefined) {
     if (abonnementId === undefined) {
         return envoyerErreur("le header subscription est mal formé", "l'id n'existe pas", [""]);
